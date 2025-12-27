@@ -1,0 +1,73 @@
+"""{{ cli.description }}"""
+
+import click
+{% if has_path_types %}
+from pathlib import Path
+{% endif %}
+
+
+@click.group()
+@click.version_option()
+{% for option in cli.global_options %}
+{{ render_option(option) }}
+{% endfor %}
+{% if cli.global_options %}
+@click.pass_context
+def cli(ctx: click.Context, {% for opt in cli.global_options %}{{ opt.name | to_param_name }}: {{ opt | python_type }}{{ ", " if not loop.last else "" }}{% endfor %}) -> None:
+{% else %}
+def cli() -> None:
+{% endif %}
+    """{{ cli.description }}"""
+{% if cli.global_options %}
+    ctx.ensure_object(dict)
+{% for opt in cli.global_options %}
+    ctx.obj["{{ opt.name }}"] = {{ opt.name | to_param_name }}
+{% endfor %}
+{% else %}
+    pass
+{% endif %}
+
+{% for command in cli.commands %}
+
+@cli.command()
+{% for arg in command.arguments %}
+{{ render_argument(arg) }}
+{% endfor %}
+{% for option in command.options %}
+{{ render_option(option) }}
+{% endfor %}
+{% if cli.global_options %}
+@click.pass_context
+def {{ command.name | to_func_name }}(ctx: click.Context, {% for arg in command.arguments %}{{ arg.name | to_param_name }}: {{ arg | python_type }}{{ ", " if not loop.last or command.options else "" }}{% endfor %}{% for opt in command.options %}{{ opt.name | to_param_name }}: {{ opt | python_type }}{{ ", " if not loop.last else "" }}{% endfor %}) -> None:
+{% else %}
+def {{ command.name | to_func_name }}({% for arg in command.arguments %}{{ arg.name | to_param_name }}: {{ arg | python_type }}{{ ", " if not loop.last or command.options else "" }}{% endfor %}{% for opt in command.options %}{{ opt.name | to_param_name }}: {{ opt | python_type }}{{ ", " if not loop.last else "" }}{% endfor %}) -> None:
+{% endif %}
+    """{{ command.description }}
+{% if command.examples %}
+
+    Examples:
+{% for example in command.examples %}
+        {{ example }}
+{% endfor %}
+{% endif %}
+    """
+    # TODO: Implement {{ command.name }} command
+    click.echo("{{ command.name }} command called")
+{% endfor %}
+{% if not cli.commands %}
+
+
+@cli.command()
+def version() -> None:
+    """Show version information."""
+    click.echo("{{ cli.name }} version 0.1.0")
+{% endif %}
+
+
+def main() -> None:
+    """Entry point for the CLI."""
+    cli()
+
+
+if __name__ == "__main__":
+    main()
